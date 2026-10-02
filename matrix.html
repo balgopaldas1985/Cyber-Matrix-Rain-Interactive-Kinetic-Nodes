@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Cyber Matrix Grid</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #020408; font-family: monospace; }
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        #ui {
+            position: absolute; top: 15px; left: 15px; color: #00ff66;
+            pointer-events: none; text-shadow: 0 0 8px #00ff66; z-index: 10;
+        }
+        #ui h1 { font-size: 1.1rem; letter-spacing: 2px; }
+        #ui p { font-size: 0.75rem; color: #777; margin-top: 4px; }
+
+        .controls {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 10px; z-index: 20; background: rgba(0, 10, 5, 0.85);
+            padding: 8px 16px; border-radius: 25px; border: 1px solid rgba(0, 255, 102, 0.4);
+        }
+        .btn {
+            background: none; border: 1px solid #00ff66; color: #00ff66;
+            padding: 6px 14px; border-radius: 15px; font-weight: bold; font-size: 0.75rem;
+            cursor: pointer;
+        }
+        .btn:active { background: #00ff66; color: #000; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <h1>CYBER // MATRIX</h1>
+        <p>Touch screen to create energy connections</p>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="controls">
+        <button class="btn" onclick="toggleRain()">RAIN</button>
+        <button class="btn" onclick="cycleTheme()">COLOR</button>
+        <button class="btn" onclick="clearNodes()">CLEAR</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        let showRain = true;
+        let themeIndex = 0;
+
+        const themes = [
+            { main: '#00ff66', trail: 'rgba(0, 20, 10, 0.15)', text: '0123456789ABCDEF' },
+            { main: '#00ccff', trail: 'rgba(0, 10, 25, 0.15)', text: 'ΨΩΔΣΠΞλµπ' },
+            { main: '#ff0055', trail: 'rgba(25, 0, 10, 0.15)', text: 'ÂÊÎÔÛÃÕ10' }
+        ];
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initRain();
+        }
+
+        // --- Matrix Rain Logic ---
+        const fontSize = 14;
+        let columns = 0;
+        let drops = [];
+
+        function initRain() {
+            columns = Math.floor(width / fontSize);
+            drops = [];
+            for (let i = 0; i < columns; i++) {
+                drops[i] = Math.random() * -100;
+            }
+        }
+
+        function drawRain() {
+            if (!showRain) return;
+            const t = themes[themeIndex];
+            ctx.fillStyle = t.main;
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const char = t.text[Math.floor(Math.random() * t.text.length)];
+                const x = i * fontSize;
+                const y = drops[i] * fontSize;
+
+                ctx.fillText(char, x, y);
+
+                if (y > height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+
+        // --- Interactive Kinetic Nodes ---
+        let nodes = [];
+
+        class Node {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 3;
+                this.vy = (Math.random() - 0.5) * 3;
+                this.radius = Math.random() * 3 + 2;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = themes[themeIndex].main;
+                ctx.fill();
+            }
+        }
+
+        function drawConnections() {
+            const t = themes[themeIndex];
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const dx = nodes[i].x - nodes[j].x;
+                    const dy = nodes[i].y - nodes[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 100) {
+                        ctx.beginPath();
+                        ctx.moveTo(nodes[i].x, nodes[i].y);
+                        ctx.lineTo(nodes[j].x, nodes[j].y);
+                        ctx.strokeStyle = t.main;
+                        ctx.globalAlpha = 1 - dist / 100;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                        ctx.globalAlpha = 1.0;
+                    }
+                }
+            }
+        }
+
+        // Spawn initial random nodes
+        function initNodes() {
+            nodes = [];
+            for (let i = 0; i < 20; i++) {
+                nodes.push(new Node(Math.random() * window.innerWidth, Math.random() * window.innerHeight));
+            }
+        }
+
+        // Touch Input
+        window.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            if (nodes.length < 50) {
+                nodes.push(new Node(touch.clientX, touch.clientY));
+            }
+        });
+
+        window.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'BUTTON') {
+                nodes.push(new Node(e.clientX, e.clientY));
+            }
+        });
+
+        function animate() {
+            // Fade effect for trails
+            ctx.fillStyle = themes[themeIndex].trail;
+            ctx.fillRect(0, 0, width, height);
+
+            drawRain();
+
+            nodes.forEach(node => {
+                node.update();
+                node.draw();
+            });
+
+            drawConnections();
+
+            requestAnimationFrame(animate);
+        }
+
+        function toggleRain() { showRain = !showRain; }
+        function cycleTheme() { themeIndex = (themeIndex + 1) % themes.length; }
+        function clearNodes() { initNodes(); }
+
+        window.addEventListener('resize', resize);
+        
+        resize();
+        initNodes();
+        animate();
+    </script>
+</body>
+  </html>
+  
